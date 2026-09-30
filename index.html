@@ -17,57 +17,64 @@
 
         body {
             margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
-            background: #f4f7f4;
+            background: #f3f6f3;
             color: #222;
-            text-align: center;
         }
 
         .container {
+            width: 100%;
             max-width: 700px;
             margin: auto;
-            padding: 30px 20px;
+            padding: 30px 20px 50px;
+            text-align: center;
         }
 
         h1 {
-            margin-bottom: 8px;
+            margin: 0 0 10px;
+            font-size: 32px;
         }
 
         .subtitle {
             color: #666;
             margin-bottom: 25px;
+            font-size: 16px;
         }
 
-        #camera-container {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        video,
-        canvas {
-            width: 400px;
-            height: 400px;
-            max-width: 100%;
-            object-fit: cover;
+        #camera-box {
+            width: 100%;
+            max-width: 500px;
+            margin: auto;
+            background: #111;
             border-radius: 18px;
-            background: #ddd;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        #video {
+            width: 100%;
+            display: block;
         }
 
         #photo {
+            width: 100%;
             display: none;
+        }
+
+        .buttons {
+            margin-top: 20px;
         }
 
         button {
             border: none;
-            padding: 14px 25px;
             border-radius: 10px;
-            background: #2e7d32;
-            color: white;
-            font-size: 17px;
-            cursor: pointer;
+            padding: 14px 22px;
             margin: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            color: white;
+            background: #2e7d32;
         }
 
         button:hover {
@@ -79,60 +86,74 @@
             cursor: not-allowed;
         }
 
-        #capture-button {
+        #captureBtn {
             display: none;
         }
 
-        #retry-button {
+        #againBtn {
             display: none;
+        }
+
+        #fileBtn {
+            background: #455a64;
         }
 
         #status {
-            color: #666;
-            margin: 15px 0;
+            margin: 20px 0;
+            color: #555;
+            min-height: 22px;
         }
 
         #result {
-            font-size: 28px;
+            margin: 25px 0;
+            font-size: 30px;
             font-weight: bold;
-            margin: 20px 0;
         }
 
         .prediction {
-            text-align: left;
             background: white;
+            border-radius: 12px;
             padding: 15px;
             margin: 12px 0;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            text-align: left;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
 
         .prediction-title {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
             font-weight: bold;
+            margin-bottom: 8px;
         }
 
         .bar {
             width: 100%;
-            height: 15px;
+            height: 14px;
             background: #e0e0e0;
             border-radius: 20px;
             overflow: hidden;
         }
 
         .bar-fill {
-            height: 100%;
             width: 0%;
+            height: 100%;
             background: #4caf50;
             transition: width 0.3s;
         }
 
-        .note {
+        #fileInput {
+            display: none;
+        }
+
+        .info {
+            margin-top: 30px;
             font-size: 13px;
             color: #777;
-            margin-top: 25px;
+            line-height: 1.5;
+        }
+
+        .error {
+            color: #c62828 !important;
         }
     </style>
 </head>
@@ -147,30 +168,66 @@
         Phân biệt Táo Tàu, Đại Táo và Mốc
     </div>
 
-    <button id="start-button" onclick="startCamera()">
-        📷 Mở camera
-    </button>
 
-    <button id="capture-button" onclick="capturePhoto()">
-        📸 Chụp ảnh & Phân tích
-    </button>
+    <div id="camera-box">
 
-    <button id="retry-button" onclick="restartCamera()">
-        🔄 Chụp lại
-    </button>
+        <video
+            id="video"
+            autoplay
+            playsinline
+            muted>
+        </video>
+
+        <canvas id="photo"></canvas>
+
+    </div>
+
 
     <div id="status">
-        Nhấn "Mở camera" để bắt đầu
+        Đang tải mô hình AI...
     </div>
 
-    <div id="camera-container">
-        <video id="video" autoplay playsinline></video>
-        <canvas id="photo"></canvas>
+
+    <div class="buttons">
+
+        <button
+            id="startBtn"
+            onclick="openCamera()"
+            disabled>
+            📷 Mở camera
+        </button>
+
+        <button
+            id="captureBtn"
+            onclick="capturePhoto()">
+            📸 Chụp ảnh
+        </button>
+
+        <button
+            id="againBtn"
+            onclick="resetCamera()">
+            🔄 Chụp lại
+        </button>
+
+        <button
+            id="fileBtn"
+            onclick="document.getElementById('fileInput').click()">
+            🖼️ Chọn ảnh
+        </button>
+
+        <input
+            type="file"
+            id="fileInput"
+            accept="image/*"
+            onchange="analyzeFile(event)">
+
     </div>
+
 
     <div id="result">
-        Chưa nhận diện
+        Chưa có kết quả
     </div>
+
 
     <div class="prediction">
 
@@ -180,5 +237,648 @@
         </div>
 
         <div class="bar">
-            <div class="bar-fill" id="bar0"></div
+            <div
+                class="bar-fill"
+                id="bar0">
+            </div>
+        </div>
+
+    </div>
+
+
+    <div class="prediction">
+
+        <div class="prediction-title">
+            <span>Đại Táo</span>
+            <span id="percent1">0%</span>
+        </div>
+
+        <div class="bar">
+            <div
+                class="bar-fill"
+                id="bar1">
+            </div>
+        </div>
+
+    </div>
+
+
+    <div class="prediction">
+
+        <div class="prediction-title">
+            <span>Mốc</span>
+            <span id="percent2">0%</span>
+        </div>
+
+        <div class="bar">
+            <div
+                class="bar-fill"
+                id="bar2">
+            </div>
+        </div>
+
+    </div>
+
+
+    <div class="info">
+        Mô hình AI được huấn luyện bằng Google Teachable Machine.
+        <br>
+        Camera chỉ được sử dụng để chụp một ảnh khi bạn nhấn nút.
+    </div>
+
+</div>
+
+
+<script>
+
+const MODEL_URL =
+    "https://teachablemachine.withgoogle.com/models/APt4HkIei/";
+
+let model = null;
+let stream = null;
+
+
+// ========================================
+// TẢI MODEL
+// ========================================
+
+async function loadModel() {
+
+    try {
+
+        document.getElementById("status").innerText =
+            "Đang tải mô hình AI...";
+
+        model = await tmImage.load(
+            MODEL_URL + "model.json",
+            MODEL_URL + "metadata.json"
+        );
+
+        document.getElementById("startBtn").disabled = false;
+
+        document.getElementById("status").innerText =
+            "Mô hình đã sẵn sàng. Nhấn Mở camera.";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        document.getElementById("status").innerText =
+            "Không tải được mô hình AI.";
+
+        document.getElementById("status").classList.add("error");
+
+    }
+
+}
+
+
+// ========================================
+// MỞ CAMERA
+// ========================================
+
+async function openCamera() {
+
+    if (!model) {
+
+        document.getElementById("status").innerText =
+            "Mô hình AI chưa tải xong.";
+
+        return;
+
+    }
+
+
+    try {
+
+        document.getElementById("status").classList.remove("error");
+
+        document.getElementById("status").innerText =
+            "Đang mở camera...";
+
+
+        if (!navigator.mediaDevices ||
+            !navigator.mediaDevices.getUserMedia) {
+
+            throw new Error(
+                "Trình duyệt không hỗ trợ camera."
+            );
+
+        }
+
+
+        stream = await navigator.mediaDevices.getUserMedia({
+
+            video: {
+                facingMode: {
+                    ideal: "environment"
+                },
+                width: {
+                    ideal: 1280
+                },
+                height: {
+                    ideal: 720
+                }
+            },
+
+            audio: false
+
+        });
+
+
+        const video =
+            document.getElementById("video");
+
+
+        video.srcObject = stream;
+
+
+        await video.play();
+
+
+        video.style.display = "block";
+
+        document.getElementById("photo").style.display =
+            "none";
+
+
+        document.getElementById("startBtn").style.display =
+            "none";
+
+        document.getElementById("captureBtn").style.display =
+            "inline-block";
+
+        document.getElementById("againBtn").style.display =
+            "none";
+
+
+        document.getElementById("status").innerText =
+            "Đưa quả táo vào khung hình rồi nhấn Chụp ảnh.";
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        let message =
+            "Không thể mở camera.";
+
+        if (error.name === "NotAllowedError") {
+
+            message =
+                "Camera bị từ chối. Hãy cho phép trình duyệt sử dụng camera.";
+
+        }
+
+        else if (error.name === "NotFoundError") {
+
+            message =
+                "Không tìm thấy camera trên thiết bị.";
+
+        }
+
+        else if (error.name === "NotReadableError") {
+
+            message =
+                "Camera đang được sử dụng bởi ứng dụng khác.";
+
+        }
+
+        else if (error.name === "SecurityError") {
+
+            message =
+                "Trình duyệt đang chặn camera vì lý do bảo mật.";
+
+        }
+
+
+        document.getElementById("status").innerText =
+            message;
+
+        document.getElementById("status").classList.add("error");
+
+    }
+
+}
+
+
+// ========================================
+// CHỤP ẢNH
+// ========================================
+
+async function capturePhoto() {
+
+    const video =
+        document.getElementById("video");
+
+    const canvas =
+        document.getElementById("photo");
+
+
+    if (
+        !video.videoWidth ||
+        !video.videoHeight
+    ) {
+
+        document.getElementById("status").innerText =
+            "Camera chưa sẵn sàng.";
+
+        return;
+
+    }
+
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+
+    const ctx =
+        canvas.getContext("2d");
+
+
+    // Chụp đúng 1 frame
+    ctx.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    // Dừng camera NGAY SAU KHI CHỤP
+    stopCamera();
+
+
+    // Ẩn camera
+    video.style.display = "none";
+
+    // Hiện ảnh vừa chụp
+    canvas.style.display = "block";
+
+
+    document.getElementById("captureBtn").style.display =
+        "none";
+
+    document.getElementById("againBtn").style.display =
+        "inline-block";
+
+
+    document.getElementById("status").classList.remove("error");
+
+    document.getElementById("status").innerText =
+        "Đang phân tích ảnh...";
+
+
+    document.getElementById("result").innerText =
+        "🔍 Đang phân tích...";
+
+
+    try {
+
+        const prediction =
+            await model.predict(canvas);
+
+        showResult(prediction);
+
+    }
+
+    catch (error) {
+
+        console.error(error);
+
+        document.getElementById("status").innerText =
+            "Không thể phân tích ảnh.";
+
+        document.getElementById("status").classList.add("error");
+
+    }
+
+}
+
+
+// ========================================
+// PHÂN TÍCH ẢNH TỪ MÁY
+// ========================================
+
+async function analyzeFile(event) {
+
+    const file =
+        event.target.files[0];
+
+
+    if (!file) {
+        return;
+    }
+
+
+    if (!model) {
+
+        document.getElementById("status").innerText =
+            "Mô hình AI chưa tải xong.";
+
+        return;
+
+    }
+
+
+    stopCamera();
+
+
+    const img =
+        new Image();
+
+
+    img.onload = async function() {
+
+        const canvas =
+            document.getElementById("photo");
+
+        canvas.width =
+            img.naturalWidth;
+
+        canvas.height =
+            img.naturalHeight;
+
+
+        const ctx =
+            canvas.getContext("2d");
+
+
+        ctx.drawImage(
+            img,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+
+        document.getElementById("video").style.display =
+            "none";
+
+        canvas.style.display =
+            "block";
+
+
+        document.getElementById("startBtn").style.display =
+            "none";
+
+        document.getElementById("captureBtn").style.display =
+            "none";
+
+        document.getElementById("againBtn").style.display =
+            "inline-block";
+
+
+        document.getElementById("status").innerText =
+            "Đang phân tích ảnh...";
+
+
+        document.getElementById("result").innerText =
+            "🔍 Đang phân tích...";
+
+
+        try {
+
+            const prediction =
+                await model.predict(canvas);
+
+            showResult(prediction);
+
+        }
+
+        catch (error) {
+
+            console.error(error);
+
+            document.getElementById("status").innerText =
+                "Không thể phân tích ảnh.";
+
+            document.getElementById("status").classList.add("error");
+
+        }
+
+    };
+
+
+    img.src =
+        URL.createObjectURL(file);
+
+}
+
+
+// ========================================
+// HIỂN THỊ KẾT QUẢ
+// ========================================
+
+function showResult(prediction) {
+
+    let bestClass = "";
+
+    let bestProbability = 0;
+
+
+    for (
+        let i = 0;
+        i < prediction.length;
+        i++
+    ) {
+
+        const probability =
+            prediction[i].probability;
+
+
+        const percent =
+            Math.round(
+                probability * 100
+            );
+
+
+        const percentElement =
+            document.getElementById(
+                "percent" + i
+            );
+
+
+        const barElement =
+            document.getElementById(
+                "bar" + i
+            );
+
+
+        if (percentElement) {
+
+            percentElement.innerText =
+                percent + "%";
+
+        }
+
+
+        if (barElement) {
+
+            barElement.style.width =
+                percent + "%";
+
+        }
+
+
+        if (
+            probability >
+            bestProbability
+        ) {
+
+            bestProbability =
+                probability;
+
+            bestClass =
+                prediction[i].className;
+
+        }
+
+    }
+
+
+    if (bestProbability < 0.65) {
+
+        document.getElementById("result").innerText =
+            "❓ Không chắc chắn";
+
+        document.getElementById("status").innerText =
+            "AI chưa đủ chắc chắn về kết quả.";
+
+    }
+
+    else {
+
+        document.getElementById("result").innerText =
+            "🔎 " + bestClass;
+
+        document.getElementById("status").innerText =
+            "Phân tích hoàn tất.";
+
+    }
+
+}
+
+
+// ========================================
+// DỪNG CAMERA
+// ========================================
+
+function stopCamera() {
+
+    if (stream) {
+
+        stream.getTracks().forEach(
+            function(track) {
+                track.stop();
+            }
+        );
+
+        stream = null;
+
+    }
+
+
+    const video =
+        document.getElementById("video");
+
+    video.srcObject = null;
+
+}
+
+
+// ========================================
+// CHỤP LẠI
+// ========================================
+
+function resetCamera() {
+
+    document.getElementById("result").innerText =
+        "Chưa có kết quả";
+
+
+    document.getElementById("status").classList.remove("error");
+
+
+    document.getElementById("status").innerText =
+        "Đang chuẩn bị camera...";
+
+
+    for (
+        let i = 0;
+        i < 3;
+        i++
+    ) {
+
+        const percent =
+            document.getElementById(
+                "percent" + i
+            );
+
+        const bar =
+            document.getElementById(
+                "bar" + i
+            );
+
+
+        if (percent) {
+
+            percent.innerText =
+                "0%";
+
+        }
+
+
+        if (bar) {
+
+            bar.style.width =
+                "0%";
+
+        }
+
+    }
+
+
+    document.getElementById("photo").style.display =
+        "none";
+
+
+    document.getElementById("video").style.display =
+        "block";
+
+
+    openCamera();
+
+}
+
+
+// ========================================
+// KHI ĐÓNG / RỜI TRANG
+// ========================================
+
+window.addEventListener(
+    "beforeunload",
+    function() {
+
+        stopCamera();
+
+    }
+);
+
+
+// ========================================
+// BẮT ĐẦU TẢI MODEL
+// ========================================
+
+loadModel();
+
+</script>
+
+</body>
+</html>
 ```
