@@ -1,256 +1,302 @@
+```html
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nhận Diện Dược Liệu & Mốc</title>
-    <!-- Tailwind CSS cho giao diện đẹp, hiện đại -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome cho icon -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- TensorFlow.js và Teachable Machine Image Library -->
+
+    <title>AI Nhận Diện Táo</title>
+
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7f4;
+            color: #222;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        h1 {
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+        }
+
+        #webcam-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 25px;
+        }
+
+        canvas {
+            width: 400px !important;
+            height: 400px !important;
+            max-width: 100%;
+            border-radius: 18px;
+            background: #ddd;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+        }
+
+        button {
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            background: #2e7d32;
+            color: white;
+            font-size: 17px;
+            cursor: pointer;
+            margin-bottom: 25px;
+        }
+
+        button:hover {
+            background: #1b5e20;
+        }
+
+        #result {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 15px 0 25px;
+        }
+
+        .prediction {
+            text-align: left;
+            background: white;
+            padding: 15px;
+            margin: 12px 0;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .prediction-title {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .bar {
+            width: 100%;
+            height: 15px;
+            background: #e0e0e0;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            width: 0%;
+            background: #4caf50;
+            transition: width 0.2s;
+        }
+
+        #status {
+            color: #666;
+            margin-bottom: 15px;
+        }
+
+        .note {
+            font-size: 13px;
+            color: #777;
+            margin-top: 25px;
+        }
+    </style>
 </head>
-<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col justify-between">
 
-    <!-- Header -->
-    <header class="bg-emerald-600 text-white shadow-md py-4 px-6 text-center">
-        <h1 class="text-xl md:text-2xl font-bold flex items-center justify-center gap-2">
-            <i class="fa-solid fa-seedling"></i> Nhận Diện Dược Liệu & Mốc AI
-        </h1>
-        <p class="text-xs md:text-sm text-emerald-100 mt-1">Hệ thống phân loại Táo Tàu, Đại Táo & Mốc tự động</p>
-    </header>
+<body>
 
-    <!-- Main Container -->
-    <main class="container mx-auto px-4 py-6 max-w-lg flex-grow">
-        
-        <!-- Trạng thái tải Model -->
-        <div id="loading-model" class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4 text-center text-amber-800 shadow-sm flex items-center justify-center gap-3">
-            <i class="fa-solid fa-spinner fa-spin text-xl"></i>
-            <span class="font-medium">Đang tải mô hình AI, vui lòng đợi trong giây lát...</span>
+<div class="container">
+
+    <h1>🍎 AI Nhận Diện Táo</h1>
+
+    <div class="subtitle">
+        Nhận diện Táo Tàu, Đại Táo và Mốc bằng AI
+    </div>
+
+    <button onclick="startCamera()">
+        📷 Bắt đầu nhận diện
+    </button>
+
+    <div id="status">
+        Nhấn nút để bật camera
+    </div>
+
+    <div id="webcam-container"></div>
+
+    <div id="result">
+        Chưa nhận diện
+    </div>
+
+    <div id="predictions">
+
+        <div class="prediction">
+            <div class="prediction-title">
+                <span>Táo Tàu</span>
+                <span id="percent0">0%</span>
+            </div>
+
+            <div class="bar">
+                <div class="bar-fill" id="bar0"></div>
+            </div>
         </div>
 
-        <!-- Khung thao tác (Chỉ hiện khi model đã tải xong) -->
-        <div id="app-container" class="hidden space-y-4">
-            
-            <!-- Nút chức năng -->
-            <div class="grid grid-cols-2 gap-3">
-                <button onclick="document.getElementById('file-input').click()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-4 rounded-xl shadow transition flex flex-col items-center justify-center gap-1 active:scale-95">
-                    <i class="fa-solid fa-image text-xl"></i>
-                    <span class="text-sm">Tải Ảnh Lên</span>
-                </button>
-                <button onclick="openCamera()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-xl shadow transition flex flex-col items-center justify-center gap-1 active:scale-95">
-                    <i class="fa-solid fa-camera text-xl"></i>
-                    <span class="text-sm">Chụp Ảnh</span>
-                </button>
-                <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+        <div class="prediction">
+            <div class="prediction-title">
+                <span>Đại Táo</span>
+                <span id="percent1">0%</span>
             </div>
 
-            <!-- Khu vực hiển thị ảnh & Video Camera ẩn -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 text-center relative overflow-hidden">
-                <div id="preview-container" class="min-h-[250px] flex items-center justify-center bg-slate-100 rounded-xl overflow-hidden relative">
-                    <div id="placeholder-text" class="text-slate-400 flex flex-col items-center gap-2 p-6">
-                        <i class="fa-solid fa-cloud-arrow-up text-4xl"></i>
-                        <span class="text-sm">Chưa có ảnh nào được chọn hoặc chụp</span>
-                    </div>
-                    <!-- Ảnh xem trước -->
-                    <img id="image-preview" class="hidden max-h-[300px] w-auto object-contain rounded-lg mx-auto" alt="Ảnh xem trước">
-                    <!-- Video stream cho camera -->
-                    <video id="webcam-video" autoplay playsinline class="hidden max-h-[350px] w-full object-cover rounded-lg"></video>
-                </div>
-
-                <!-- Nút chụp hình từ Camera -->
-                <div id="camera-action" class="hidden mt-3">
-                    <button onclick="capturePhoto()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2.5 px-6 rounded-full shadow-lg transition active:scale-95">
-                        <i class="fa-solid fa-camera-retro mr-2"></i> Chụp Ngay
-                    </button>
-                    <button onclick="stopCamera()" class="ml-2 bg-slate-300 hover:bg-slate-400 text-slate-700 font-semibold py-2.5 px-4 rounded-full transition">
-                        Hủy
-                    </button>
-                </div>
+            <div class="bar">
+                <div class="bar-fill" id="bar1"></div>
             </div>
-
-            <!-- Kết quả nhận diện -->
-            <div id="result-container" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 hidden">
-                <h3 class="font-bold text-slate-700 border-b pb-2 mb-3 flex items-center gap-2">
-                    <i class="fa-solid fa-chart-bar text-emerald-600"></i> Kết Quả Phân Tích AI
-                </h3>
-                
-                <div id="prediction-results" class="space-y-3">
-                    <!-- Các thanh tỉ lệ sẽ được điền bằng JavaScript -->
-                </div>
-
-                <div id="final-verdict" class="mt-4 p-3 rounded-xl text-center font-bold text-base">
-                    <!-- Đưa ra kết luận -->
-                </div>
-            </div>
-
         </div>
 
-    </main>
+        <div class="prediction">
+            <div class="prediction-title">
+                <span>Mốc</span>
+                <span id="percent2">0%</span>
+            </div>
 
-    <!-- Footer -->
-    <footer class="text-center py-4 text-xs text-slate-400 border-t bg-white">
-        Được tích hợp bởi Teachable Machine & GitHub Pages
-    </footer>
+            <div class="bar">
+                <div class="bar-fill" id="bar2"></div>
+            </div>
+        </div>
 
-    <!-- Script Xử lý AI và Giao diện -->
-    <script>
-        const URL_MODEL = "https://teachablemachine.withgoogle.com/models/APt4HkIei/";
-        let model, webcamStream = null;
+    </div>
 
-        const loadingModelDiv = document.getElementById("loading-model");
-        const appContainer = document.getElementById("app-container");
-        const imagePreview = document.getElementById("image-preview");
-        const webcamVideo = document.getElementById("webcam-video");
-        const placeholderText = document.getElementById("placeholder-text");
-        const cameraAction = document.getElementById("camera-action");
-        const resultContainer = document.getElementById("result-container");
-        const predictionResults = document.getElementById("prediction-results");
-        const finalVerdict = document.getElementById("final-verdict");
+    <div class="note">
+        AI sử dụng mô hình được huấn luyện bằng Google Teachable Machine.
+    </div>
 
-        // 1. Tải Model khi vừa mở trang
-        async function loadModel() {
-            try {
-                const modelURL = URL_MODEL + "model.json";
-                const metadataURL = URL_MODEL + "metadata.json";
-                model = await tmImage.load(modelURL, metadataURL);
-                
-                loadingModelDiv.classList.add("hidden");
-                appContainer.classList.remove("hidden");
-            } catch (error) {
-                loadingModelDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500"></i> Không thể tải mô hình AI. Vui lòng kiểm tra lại đường truyền!`;
-                loadingModelDiv.className = "bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-center text-red-700 shadow-sm";
-            }
+</div>
+
+<script>
+
+const URL = "https://teachablemachine.withgoogle.com/models/APt4HkIei/";
+
+let model;
+let webcam;
+let maxPredictions;
+let running = false;
+
+async function startCamera() {
+
+    if (running) {
+        return;
+    }
+
+    try {
+
+        document.getElementById("status").innerText =
+            "Đang tải mô hình AI...";
+
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        model = await tmImage.load(modelURL, metadataURL);
+
+        maxPredictions = model.getTotalClasses();
+
+        webcam = new tmImage.Webcam(400, 400, true);
+
+        await webcam.setup();
+
+        await webcam.play();
+
+        running = true;
+
+        document.getElementById("status").innerText =
+            "Camera đang hoạt động";
+
+        document
+            .getElementById("webcam-container")
+            .appendChild(webcam.canvas);
+
+        window.requestAnimationFrame(loop);
+
+    } catch (error) {
+
+        console.error(error);
+
+        document.getElementById("status").innerText =
+            "Không thể mở camera. Hãy cho phép trình duyệt sử dụng camera.";
+
+    }
+}
+
+
+async function loop() {
+
+    if (!running) {
+        return;
+    }
+
+    webcam.update();
+
+    await predict();
+
+    window.requestAnimationFrame(loop);
+}
+
+
+async function predict() {
+
+    const prediction = await model.predict(webcam.canvas);
+
+    let bestClass = "";
+    let bestProbability = 0;
+
+    for (let i = 0; i < maxPredictions; i++) {
+
+        const className = prediction[i].className;
+        const probability = prediction[i].probability;
+
+        const percent = Math.round(probability * 100);
+
+        document.getElementById("percent" + i).innerText =
+            percent + "%";
+
+        document.getElementById("bar" + i).style.width =
+            percent + "%";
+
+        if (probability > bestProbability) {
+
+            bestProbability = probability;
+            bestClass = className;
+
         }
-        loadModel();
+    }
 
-        // 2. Xử lý khi tải ảnh từ thiết bị (TỰ ĐỘNG PHÂN TÍCH NGAY)
-        function handleImageUpload(event) {
-            stopCamera();
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    imagePreview.src = e.target.result;
-                    imagePreview.classList.remove("hidden");
-                    placeholderText.classList.add("hidden");
-                    
-                    // Gọi AI phân tích ngay sau khi ảnh hiển thị
-                    imagePreview.onload = function() {
-                        predict(imagePreview);
-                    }
-                }
-                reader.readAsDataURL(file);
-            }
-        }
+    if (bestProbability < 0.65) {
 
-        // 3. Mở Camera thiết bị
-        async function openCamera() {
-            stopCamera();
-            imagePreview.classList.add("hidden");
-            placeholderText.classList.add("hidden");
-            webcamVideo.classList.remove("hidden");
-            cameraAction.classList.remove("hidden");
-            resultContainer.classList.add("hidden");
+        document.getElementById("result").innerText =
+            "❓ Không chắc chắn";
 
-            try {
-                webcamStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" }, 
-                    audio: false 
-                });
-                webcamVideo.srcObject = webcamStream;
-            } catch (err) {
-                alert("Không thể truy cập vào camera! Vui lòng cấp quyền camera cho trình duyệt.");
-                stopCamera();
-            }
-        }
+    } else {
 
-        // 4. Chụp ảnh từ Camera (TỰ ĐỘNG PHÂN TÍCH NGAY)
-        function capturePhoto() {
-            if (!webcamStream) return;
+        document.getElementById("result").innerText =
+            "🔎 " + bestClass;
 
-            // Tạo canvas để chụp khung hình từ video
-            const canvas = document.createElement("canvas");
-            canvas.width = webcamVideo.videoWidth;
-            canvas.height = webcamVideo.videoHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(webcamVideo, 0, 0, canvas.width, canvas.height);
+    }
+}
 
-            // Gán ảnh chụp vào thẻ hiển thị
-            imagePreview.src = canvas.toDataURL("image/png");
-            
-            // Dừng camera
-            stopCamera();
+</script>
 
-            // Hiển thị ảnh chụp và ẩn video
-            imagePreview.classList.remove("hidden");
-            
-            // Tiến hành phân tích tự động ngay lập tức
-            predict(imagePreview);
-        }
-
-        // 5. Tắt Camera
-        function stopCamera() {
-            if (webcamStream) {
-                webcamStream.getTracks().forEach(track => track.stop());
-                webcamStream = null;
-            }
-            webcamVideo.classList.add("hidden");
-            cameraAction.classList.add("hidden");
-            if (imagePreview.classList.contains("hidden") && placeholderText.classList.contains("hidden")) {
-                placeholderText.classList.remove("hidden");
-            }
-        }
-
-        // 6. Hàm chạy dự đoán bằng Teachable Machine Model
-        async function predict(element) {
-            if (!model) return;
-            
-            resultContainer.classList.remove("hidden");
-            predictionResults.innerHTML = `<div class="text-center py-4 text-slate-500"><i class="fa-solid fa-spinner fa-spin"></i> Đang phân tích dược liệu...</div>`;
-
-            // Thực hiện dự đoán
-            const predictions = await model.predict(element);
-            
-            // Sắp xếp tỉ lệ từ cao đến thấp
-            predictions.sort((a, b) => b.probability - a.probability);
-
-            predictionResults.innerHTML = "";
-            let highestPred = predictions[0];
-
-            predictions.forEach(p => {
-                const percentage = (p.probability * 100).toFixed(1);
-                
-                let barColor = "bg-emerald-500";
-                if (p.className.toLowerCase().includes("mốc")) {
-                    barColor = "bg-red-500";
-                }
-
-                const itemHTML = `
-                    <div>
-                        <div class="flex justify-between text-sm font-semibold mb-1">
-                            <span>${p.className}</span>
-                            <span>${percentage}%</span>
-                        </div>
-                        <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                            <div class="${barColor} h-2.5 rounded-full transition-all duration-500" style="width: ${percentage}%"></div>
-                        </div>
-                    </div>
-                `;
-                predictionResults.innerHTML += itemHTML;
-            });
-
-            // Đưa ra kết luận tổng quan
-            if (highestPred.className.toLowerCase().includes("mốc")) {
-                finalVerdict.className = "mt-4 p-3 rounded-xl text-center font-bold text-sm bg-red-100 text-red-700 border border-red-200";
-                finalVerdict.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> CẢNH BÁO: Dược liệu có dấu hiệu ẩm mốc (${highestPred.className})! Không nên sử dụng.`;
-            } else {
-                finalVerdict.className = "mt-4 p-3 rounded-xl text-center font-bold text-sm bg-emerald-100 text-emerald-700 border border-emerald-200";
-                finalVerdict.innerHTML = `<i class="fa-solid fa-circle-check"></i> An toàn: Dược liệu đạt chất lượng tốt (${highestPred.className}).`;
-            }
-        }
-    </script>
 </body>
 </html>
+```
