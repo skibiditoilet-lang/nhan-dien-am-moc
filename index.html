@@ -38,40 +38,64 @@
             margin-bottom: 25px;
         }
 
-        #webcam-container {
+        #camera-container {
             display: flex;
             justify-content: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
 
+        video,
         canvas {
-            width: 400px !important;
-            height: 400px !important;
+            width: 400px;
+            height: 400px;
             max-width: 100%;
+            object-fit: cover;
             border-radius: 18px;
             background: #ddd;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        #photo {
+            display: none;
         }
 
         button {
             border: none;
-            padding: 14px 28px;
+            padding: 14px 25px;
             border-radius: 10px;
             background: #2e7d32;
             color: white;
             font-size: 17px;
             cursor: pointer;
-            margin-bottom: 25px;
+            margin: 5px;
         }
 
         button:hover {
             background: #1b5e20;
         }
 
+        button:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        #capture-button {
+            display: none;
+        }
+
+        #retry-button {
+            display: none;
+        }
+
+        #status {
+            color: #666;
+            margin: 15px 0;
+        }
+
         #result {
             font-size: 28px;
             font-weight: bold;
-            margin: 15px 0 25px;
+            margin: 20px 0;
         }
 
         .prediction {
@@ -80,7 +104,7 @@
             padding: 15px;
             margin: 12px 0;
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
         .prediction-title {
@@ -102,12 +126,7 @@
             height: 100%;
             width: 0%;
             background: #4caf50;
-            transition: width 0.2s;
-        }
-
-        #status {
-            color: #666;
-            margin-bottom: 15px;
+            transition: width 0.3s;
         }
 
         .note {
@@ -125,178 +144,41 @@
     <h1>🍎 AI Nhận Diện Táo</h1>
 
     <div class="subtitle">
-        Nhận diện Táo Tàu, Đại Táo và Mốc bằng AI
+        Phân biệt Táo Tàu, Đại Táo và Mốc
     </div>
 
-    <button onclick="startCamera()">
-        📷 Bắt đầu nhận diện
+    <button id="start-button" onclick="startCamera()">
+        📷 Mở camera
+    </button>
+
+    <button id="capture-button" onclick="capturePhoto()">
+        📸 Chụp ảnh & Phân tích
+    </button>
+
+    <button id="retry-button" onclick="restartCamera()">
+        🔄 Chụp lại
     </button>
 
     <div id="status">
-        Nhấn nút để bật camera
+        Nhấn "Mở camera" để bắt đầu
     </div>
 
-    <div id="webcam-container"></div>
+    <div id="camera-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="photo"></canvas>
+    </div>
 
     <div id="result">
         Chưa nhận diện
     </div>
 
-    <div id="predictions">
+    <div class="prediction">
 
-        <div class="prediction">
-            <div class="prediction-title">
-                <span>Táo Tàu</span>
-                <span id="percent0">0%</span>
-            </div>
-
-            <div class="bar">
-                <div class="bar-fill" id="bar0"></div>
-            </div>
+        <div class="prediction-title">
+            <span>Táo Tàu</span>
+            <span id="percent0">0%</span>
         </div>
 
-        <div class="prediction">
-            <div class="prediction-title">
-                <span>Đại Táo</span>
-                <span id="percent1">0%</span>
-            </div>
-
-            <div class="bar">
-                <div class="bar-fill" id="bar1"></div>
-            </div>
-        </div>
-
-        <div class="prediction">
-            <div class="prediction-title">
-                <span>Mốc</span>
-                <span id="percent2">0%</span>
-            </div>
-
-            <div class="bar">
-                <div class="bar-fill" id="bar2"></div>
-            </div>
-        </div>
-
-    </div>
-
-    <div class="note">
-        AI sử dụng mô hình được huấn luyện bằng Google Teachable Machine.
-    </div>
-
-</div>
-
-<script>
-
-const URL = "https://teachablemachine.withgoogle.com/models/APt4HkIei/";
-
-let model;
-let webcam;
-let maxPredictions;
-let running = false;
-
-async function startCamera() {
-
-    if (running) {
-        return;
-    }
-
-    try {
-
-        document.getElementById("status").innerText =
-            "Đang tải mô hình AI...";
-
-        const modelURL = URL + "model.json";
-        const metadataURL = URL + "metadata.json";
-
-        model = await tmImage.load(modelURL, metadataURL);
-
-        maxPredictions = model.getTotalClasses();
-
-        webcam = new tmImage.Webcam(400, 400, true);
-
-        await webcam.setup();
-
-        await webcam.play();
-
-        running = true;
-
-        document.getElementById("status").innerText =
-            "Camera đang hoạt động";
-
-        document
-            .getElementById("webcam-container")
-            .appendChild(webcam.canvas);
-
-        window.requestAnimationFrame(loop);
-
-    } catch (error) {
-
-        console.error(error);
-
-        document.getElementById("status").innerText =
-            "Không thể mở camera. Hãy cho phép trình duyệt sử dụng camera.";
-
-    }
-}
-
-
-async function loop() {
-
-    if (!running) {
-        return;
-    }
-
-    webcam.update();
-
-    await predict();
-
-    window.requestAnimationFrame(loop);
-}
-
-
-async function predict() {
-
-    const prediction = await model.predict(webcam.canvas);
-
-    let bestClass = "";
-    let bestProbability = 0;
-
-    for (let i = 0; i < maxPredictions; i++) {
-
-        const className = prediction[i].className;
-        const probability = prediction[i].probability;
-
-        const percent = Math.round(probability * 100);
-
-        document.getElementById("percent" + i).innerText =
-            percent + "%";
-
-        document.getElementById("bar" + i).style.width =
-            percent + "%";
-
-        if (probability > bestProbability) {
-
-            bestProbability = probability;
-            bestClass = className;
-
-        }
-    }
-
-    if (bestProbability < 0.65) {
-
-        document.getElementById("result").innerText =
-            "❓ Không chắc chắn";
-
-    } else {
-
-        document.getElementById("result").innerText =
-            "🔎 " + bestClass;
-
-    }
-}
-
-</script>
-
-</body>
-</html>
+        <div class="bar">
+            <div class="bar-fill" id="bar0"></div
 ```
